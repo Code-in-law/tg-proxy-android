@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0A0F"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📱 TG Proxy"
+            android:textSize="28sp"
+            android:textColor="#E2E8F0"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Telegram WebSocket Bridge"
+            android:textSize="14sp"
+            android:textColor="#94A3B8"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="32dp" />
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔴 Прокси остановлен"
+            android:textSize="16sp"
+            android:textColor="#EF4444"
+            android:textAlignment="center"
+            android:padding="16dp"
+            android:background="@drawable/card_bg"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Toggle Button -->
+        <Button
+            android:id="@+id/btnToggle"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="▶  Запустить прокси"
+            android:textSize="16sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:backgroundTint="#4F46E5"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Stats -->
+        <TextView
+            android:id="@+id/tvStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#94A3B8"
+            android:fontFamily="monospace"
+            android:padding="16dp"
+            android:background="@drawable/card_bg"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone" />
+
+        <!-- Instructions -->
+        <TextView
+            android:id="@+id/tvInstructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="#64748B"
+            android:lineSpacingExtra="4dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg"
+            android:layout_marginBottom="32dp" />
+
+        <!-- ═══════ CREDITS SECTION ═══════ -->
+
+        <!-- Header with line -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp"
+            android:paddingStart="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="СОЗДАТЕЛИ"
+                android:textSize="11sp"
+                android:textColor="#4F46E5"
+                android:textStyle="bold"
+                android:letterSpacing="0.15"
+                android:layout_marginEnd="8dp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#4F46E5"
+                android:alpha="0.3" />
+        </LinearLayout>
+
+        <!-- Credits Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/credits_card_bg"
+            android:layout_marginBottom="16dp">
+
+            <!-- Creator 1: App -->
+            <LinearLayout
+                android:id="@+id/creditApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="14dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <!-- Avatar -->
+                <TextView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:text="⚡"
+                    android:textSize="20sp"
+                    android:gravity="center"
+                    android:background="@drawable/avatar_app_bg"
+                    android:layout_marginEnd="14dp" />
+
+                <!-- Info -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ANDROID APP"
+                        android:textSize="10sp"
+                        android:textColor="#64748B"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.12" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Code-in-law"
+                        android:textSize="15sp"
+                        android:textColor="#E2E8F0"
+                        android:textStyle="bold"
+                        android:layout_marginTop="1dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="github.com/Code-in-law"
+                        android:textSize="12sp"
+                        android:textColor="#4F46E5"
+                        android:layout_marginTop="1dp" />
+                </LinearLayout>
+
+                <!-- Arrow -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textSize="22sp"
+                    android:textColor="#333333" />
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#1E1E2E"
+                android:layout_marginStart="72dp" />
+
+            <!-- Creator 2: Proxy -->
+            <LinearLayout
+                android:id="@+id/creditProxy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="14dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <!-- Avatar -->
+                <TextView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:text="🌊"
+                    android:textSize="20sp"
+                    android:gravity="center"
+                    android:background="@drawable/avatar_proxy_bg"
+                    android:layout_marginEnd="14dp" />
+
+                <!-- Info -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PROXY ENGINE"
+                        android:textSize="10sp"
+                        android:textColor="#64748B"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.12" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Flowseal"
+                        android:textSize="15sp"
+                        android:textColor="#E2E8F0"
+                        android:textStyle="bold"
+                        android:layout_marginTop="1dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="github.com/Flowseal"
+                        android:textSize="12sp"
+                        android:textColor="#4F46E5"
+                        android:layout_marginTop="1dp" />
+                </LinearLayout>
+
+                <!-- Arrow -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textSize="22sp"
+                    android:textColor="#333333" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Footer -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="❤️ Open Source Project"
+            android:textSize="11sp"
+            android:textColor="#4F46E5"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+</ScrollView>
