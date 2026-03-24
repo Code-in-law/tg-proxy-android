@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -12,35 +11,12 @@ import android.os.Looper
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
-    // -------------------------------------------------------------------------
-    // VPN permission launcher
-    // Запускается системным диалогом "Разрешить VPN?"
-    // -------------------------------------------------------------------------
-    private val vpnPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            startVpnService()
-        } else {
-            Toast.makeText(
-                this,
-                "Разрешение VPN необходимо для работы прокси",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Views
-    // -------------------------------------------------------------------------
     private lateinit var btnToggle: Button
     private lateinit var tvStatus: TextView
     private lateinit var tvStats: TextView
@@ -48,9 +24,6 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    // -------------------------------------------------------------------------
-    // Stats updater
-    // -------------------------------------------------------------------------
     private val statsUpdater = object : Runnable {
         override fun run() {
             updateUI()
@@ -58,16 +31,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Lifecycle
-    // -------------------------------------------------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        btnToggle = findViewById(R.id.btnToggle)
-        tvStatus  = findViewById(R.id.tvStatus)
-        tvStats   = findViewById(R.id.tvStats)
+        btnToggle      = findViewById(R.id.btnToggle)
+        tvStatus       = findViewById(R.id.tvStatus)
+        tvStats        = findViewById(R.id.tvStats)
         tvInstructions = findViewById(R.id.tvInstructions)
 
         // Разрешение на уведомления (Android 13+)
@@ -86,30 +56,24 @@ class MainActivity : AppCompatActivity() {
 
         btnToggle.setOnClickListener { toggleProxy() }
 
-        // Инструкции теперь отражают VPN-режим: настраивать прокси в Telegram НЕ НУЖНО
         tvInstructions.text = buildString {
             appendLine("📋 Как пользоваться:")
             appendLine("")
             appendLine("1. Нажмите «▶ Запустить прокси»")
-            appendLine("2. Разрешите VPN в системном диалоге")
-            appendLine("3. Запустите Telegram — он заработает")
-            appendLine("   автоматически, без настроек прокси.")
-            appendLine("")
-            appendLine("ℹ️  Приложение перехватывает только трафик")
-            appendLine("   к серверам Telegram. Остальной интернет")
-            appendLine("   работает напрямую, как обычно.")
+            appendLine("2. Откройте Telegram → Настройки →")
+            appendLine("   Данные и память → Прокси")
+            appendLine("3. Добавить прокси → SOCKS5:")
+            appendLine("   Сервер:  127.0.0.1")
+            appendLine("   Порт:    1080")
+            appendLine("   (логин и пароль — пустые)")
+            appendLine("4. Нажмите Подключить ✓")
         }
 
-        // Ссылки на авторов
         findViewById<View>(R.id.creditApp).setOnClickListener {
-            startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Code-in-law"))
-            )
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Code-in-law")))
         }
         findViewById<View>(R.id.creditProxy).setOnClickListener {
-            startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Flowseal"))
-            )
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Flowseal")))
         }
 
         handler.post(statsUpdater)
@@ -120,66 +84,40 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // -------------------------------------------------------------------------
-    // Управление прокси
-    // -------------------------------------------------------------------------
-
     private fun toggleProxy() {
-        if (TgVpnService.isRunning) {
-            stopVpnService()
+        if (ProxyService.isRunning) {
+            stopProxyService()
         } else {
-            requestVpnPermissionAndStart()
+            startProxyService()
         }
-        // небольшая задержка, чтобы сервис успел стартовать/остановиться
         handler.postDelayed({ updateUI() }, 500)
     }
 
-    /**
-     * Запрашивает разрешение VPN (если ещё не выдано),
-     * после чего стартует TgVpnService.
-     */
-    private fun requestVpnPermissionAndStart() {
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            // Нужно показать системный диалог
-            vpnPermissionLauncher.launch(intent)
-        } else {
-            // Разрешение уже есть — сразу стартуем
-            startVpnService()
-        }
-    }
-
-    private fun startVpnService() {
-        val intent = Intent(this, TgVpnService::class.java).apply {
-            action = TgVpnService.ACTION_START
-        }
+    private fun startProxyService() {
+        val intent = Intent(this, ProxyService::class.java)
+        intent.putExtra("port", 1080)
         ContextCompat.startForegroundService(this, intent)
     }
 
-    private fun stopVpnService() {
-        val intent = Intent(this, TgVpnService::class.java).apply {
-            action = TgVpnService.ACTION_STOP
-        }
+    private fun stopProxyService() {
+        val intent = Intent(this, ProxyService::class.java)
+        intent.action = ProxyService.ACTION_STOP
         startService(intent)
     }
 
-    // -------------------------------------------------------------------------
-    // UI
-    // -------------------------------------------------------------------------
-
     private fun updateUI() {
-        if (TgVpnService.isRunning) {
+        if (ProxyService.isRunning) {
             btnToggle.text = "⏹  Остановить прокси"
             btnToggle.backgroundTintList =
                 android.content.res.ColorStateList.valueOf(0xFFDC2626.toInt())
-            tvStatus.text = "🟢 VPN-прокси активен"
+            tvStatus.text = "🟢 SOCKS5 прокси активен · порт 1080"
             tvStatus.setTextColor(0xFF4ADE80.toInt())
             tvStats.visibility = View.VISIBLE
             tvStats.text = buildString {
                 appendLine("📊 Статистика:")
-                appendLine("   Соединений:   ${TgVpnService.connectionCount}")
-                appendLine("   WebSocket:    ${TgVpnService.wsCount}")
-                appendLine("   TCP fallback: ${TgVpnService.tcpFallbackCount}")
+                appendLine("   Соединений:   ${ProxyService.connectionCount}")
+                appendLine("   WebSocket:    ${ProxyService.wsCount}")
+                appendLine("   TCP fallback: ${ProxyService.tcpFallbackCount}")
             }
         } else {
             btnToggle.text = "▶  Запустить прокси"

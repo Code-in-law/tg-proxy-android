@@ -147,7 +147,7 @@ object Socks5Engine {
                     // WsBridge теперь класс — создаём экземпляр и вызываем connect()
                     val bridge = WsBridge(targetIp, domain, "/apiws")
                     val ws = bridge.connect()
-                    TgVpnService.wsCount++
+                    ProxyService.wsCount++
 
                     ws.send(initData)
                     bridge.bridge(client, ws)
@@ -177,7 +177,7 @@ object Socks5Engine {
             remote.tcpNoDelay = true
             remote.getOutputStream().write(init)
             remote.getOutputStream().flush()
-            TgVpnService.tcpFallbackCount++
+            ProxyService.tcpFallbackCount++
             bridgeTcp(client, remote)
         } catch (e: Exception) {
             Log.w(TAG, "TCP fallback to $dst:$port failed: ${e.message}")

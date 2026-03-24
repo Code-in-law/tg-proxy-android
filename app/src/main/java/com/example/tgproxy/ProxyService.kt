@@ -19,18 +19,12 @@ class ProxyService : Service() {
         const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.example.tgproxy.STOP"
 
-        @Volatile
-        var isRunning = false
+        @Volatile var isRunning = false
             private set
 
-        @Volatile
-        var connectionCount = 0
-
-        @Volatile
-        var wsCount = 0
-
-        @Volatile
-        var tcpFallbackCount = 0
+        @Volatile var connectionCount = 0
+        @Volatile var wsCount = 0
+        @Volatile var tcpFallbackCount = 0
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -51,14 +45,8 @@ class ProxyService : Service() {
         val port = intent?.getIntExtra("port", 1080) ?: 1080
         val notification = buildNotification("Запуск на порту $port...")
 
-        // ИЗМЕНЕНИЕ: Используем TYPE_DATA_SYNC вместо SPECIAL_USE
         try {
-            if (Build.VERSION.SDK_INT >= 34) {
-                startForeground(
-                    NOTIFICATION_ID, notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else if (Build.VERSION.SDK_INT >= 29) {
+            if (Build.VERSION.SDK_INT >= 29) {
                 startForeground(
                     NOTIFICATION_ID, notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
@@ -77,7 +65,6 @@ class ProxyService : Service() {
         wsCount = 0
         tcpFallbackCount = 0
 
-        // Отменяем старую задачу если была
         proxyJob?.cancel()
         proxyJob = scope.launch {
             runProxy(port)
@@ -110,12 +97,11 @@ class ProxyService : Service() {
                         )
                     }
                 } catch (_: java.net.SocketException) {
-                    break // socket closed during accept
+                    break
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Proxy server error: ${e.message}", e)
-            // Если порт занят, останавливаем сервис
             stopSelf()
         }
     }
@@ -125,8 +111,7 @@ class ProxyService : Service() {
         try {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             nm.notify(NOTIFICATION_ID, buildNotification(text))
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
     }
 
     private fun buildNotification(text: String): Notification {
@@ -137,7 +122,6 @@ class ProxyService : Service() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val openIntent = Intent(this, MainActivity::class.java)
         val openPi = PendingIntent.getActivity(
             this, 0, openIntent,
@@ -172,9 +156,7 @@ class ProxyService : Service() {
     override fun onDestroy() {
         isRunning = false
         proxyJob?.cancel()
-        try {
-            serverSocket?.close()
-        } catch (_: Exception) {}
+        try { serverSocket?.close() } catch (_: Exception) {}
         scope.cancel()
         super.onDestroy()
     }
