@@ -16,9 +16,6 @@ object Socks5Engine {
 
     private const val TAG = "Socks5"
 
-    /**
-     * Handle a single SOCKS5 client connection (blocking — called from coroutine).
-     */
     fun handleClient(client: Socket) {
         client.soTimeout = 15_000
         client.tcpNoDelay = true
@@ -34,8 +31,8 @@ object Socks5Engine {
                 return
             }
             val nMethods = inp.read()
-            inp.readNBytes2(nMethods) // consume methods
-            out.write(byteArrayOf(0x05, 0x00)) // no-auth
+            inp.readNBytes2(nMethods)
+            out.write(byteArrayOf(0x05, 0x00))
             out.flush()
 
             // --- CONNECT request ---
@@ -52,19 +49,18 @@ object Socks5Engine {
 
             val dst: String
             when (atyp) {
-                1 -> { // IPv4
+                1 -> {
                     val raw = inp.readNBytes2(4)
                     dst = InetAddress.getByAddress(raw).hostAddress ?: "0.0.0.0"
                 }
-                3 -> { // Domain
+                3 -> {
                     val dlen = inp.read()
                     val raw = inp.readNBytes2(dlen)
                     dst = String(raw)
                 }
-                4 -> { // IPv6
+                4 -> {
                     val raw = inp.readNBytes2(16)
                     dst = InetAddress.getByAddress(raw).hostAddress ?: "::0"
-                    // IPv6 not supported for Telegram
                     out.write(socks5Reply(0x08))
                     out.flush()
                     client.close()
@@ -79,7 +75,8 @@ object Socks5Engine {
             }
 
             val portBytes = inp.readNBytes2(2)
-            val port = ((portBytes[0].toInt() and 0xFF) shl 8) or (portBytes[1].toInt() and 0xFF)
+            val port = ((portBytes[0].toInt() and 0xFF) shl 8) or
+                    (portBytes[1].toInt() and 0xFF)
 
             // --- Non-Telegram → passthrough ---
             if (!TgConstants.isTelegramIp(dst)) {
@@ -110,14 +107,12 @@ object Socks5Engine {
                 return
             }
 
-            // HTTP transport check
             if (isHttpTransport(init)) {
                 Log.d(TAG, "HTTP transport to $dst:$port rejected")
                 client.close()
                 return
             }
 
-            // Extract DC
             var dc = dcFromInit(init)
             var isMedia = false
             var initData = init
@@ -148,14 +143,14 @@ object Socks5Engine {
             for (domain in domains) {
                 try {
                     Log.i(TAG, "DC$dc${if (isMedia) "m" else ""} → WS via $domain ($targetIp)")
-                    val ws = WsBridge.connect(targetIp, domain)
-                    ProxyService.wsCount++
 
-                    // Send init
+                    // WsBridge теперь класс — создаём экземпляр и вызываем connect()
+                    val bridge = WsBridge(targetIp, domain, "/apiws")
+                    val ws = bridge.connect()
+                    TgVpnService.wsCount++
+
                     ws.send(initData)
-
-                    // Bridge
-                    WsBridge.bridge(client, ws)
+                    bridge.bridge(client, ws)
                     wsOk = true
                     break
                 } catch (e: Exception) {
@@ -182,7 +177,7 @@ object Socks5Engine {
             remote.tcpNoDelay = true
             remote.getOutputStream().write(init)
             remote.getOutputStream().flush()
-            ProxyService.tcpFallbackCount++
+            TgVpnService.tcpFallbackCount++
             bridgeTcp(client, remote)
         } catch (e: Exception) {
             Log.w(TAG, "TCP fallback to $dst:$port failed: ${e.message}")
@@ -225,29 +220,29 @@ object Socks5Engine {
     }
 
     private fun socks5Reply(status: Int): ByteArray {
-        return byteArrayOf(0x05, status.toByte(), 0x00, 0x01,
-            0, 0, 0, 0, 0, 0)
+        return byteArrayOf(
+            0x05, status.toByte(), 0x00, 0x01,
+            0, 0, 0, 0, 0, 0
+        )
     }
 
     private fun isHttpTransport(data: ByteArray): Boolean {
         if (data.size < 5) return false
         val s = String(data, 0, 8, Charsets.US_ASCII)
-        return s.startsWith("POST ") || s.startsWith("GET ") ||
-                s.startsWith("HEAD ") || s.startsWith("OPTIONS ")
+        return s.startsWith("POST ")    || s.startsWith("GET ") ||
+                s.startsWith("HEAD ")   || s.startsWith("OPTIONS ")
     }
 
-    /**
-     * Extract DC ID from 64-byte MTProto obfuscation init.
-     * Returns signed dc_id (negative = media) or null.
-     */
     private fun dcFromInit(data: ByteArray): Int? {
         try {
             val key = data.copyOfRange(8, 40)
-            val iv = data.copyOfRange(40, 56)
+            val iv  = data.copyOfRange(40, 56)
             val cipher = Cipher.getInstance("AES/CTR/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE,
+            cipher.init(
+                Cipher.ENCRYPT_MODE,
                 SecretKeySpec(key, "AES"),
-                IvParameterSpec(iv))
+                IvParameterSpec(iv)
+            )
             val keystream = cipher.update(ByteArray(64))
             val plain = ByteArray(8)
             for (i in 0..7) {
@@ -258,7 +253,10 @@ object Socks5Engine {
             val dcRaw = ByteBuffer.wrap(plain, 4, 2)
                 .order(ByteOrder.LITTLE_ENDIAN).short.toInt()
 
-            if (proto == 0xEFEFEFEFL || proto == 0xEEEEEEEEL || proto == 0xDDDDDDDDL) {
+            if (proto == 0xEFEFEFEFL ||
+                proto == 0xEEEEEEEEL ||
+                proto == 0xDDDDDDDDL
+            ) {
                 val dcAbs = kotlin.math.abs(dcRaw)
                 if (dcAbs in 1..5 || dcAbs == 203) {
                     return dcRaw
@@ -270,20 +268,18 @@ object Socks5Engine {
         return null
     }
 
-    /**
-     * Patch dc_id in the 64-byte init packet.
-     */
     private fun patchInitDc(data: ByteArray, dc: Int): ByteArray {
         if (data.size < 64) return data
         try {
             val key = data.copyOfRange(8, 40)
-            val iv = data.copyOfRange(40, 56)
+            val iv  = data.copyOfRange(40, 56)
             val cipher = Cipher.getInstance("AES/CTR/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE,
+            cipher.init(
+                Cipher.ENCRYPT_MODE,
                 SecretKeySpec(key, "AES"),
-                IvParameterSpec(iv))
+                IvParameterSpec(iv)
+            )
             val ks = cipher.update(ByteArray(64))
-
             val patched = data.copyOf()
             val dcBytes = ByteBuffer.allocate(2)
                 .order(ByteOrder.LITTLE_ENDIAN)
@@ -306,7 +302,6 @@ object Socks5Engine {
         }
     }
 
-    /** Read exactly n bytes (blocking). */
     private fun InputStream.readNBytes2(n: Int): ByteArray {
         val buf = ByteArray(n)
         var off = 0

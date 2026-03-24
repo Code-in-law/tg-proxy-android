@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+
+
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -29,9 +33,14 @@
 
         <!-- ИЗМЕНЕНИЕ: Тип сервиса dataSync -->
         <service
-            android:name=".ProxyService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:name=".TgVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
 
     </application>
 
