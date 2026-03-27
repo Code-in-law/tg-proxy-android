@@ -115,7 +115,6 @@ Android 8.0 (API 26) и выше. Это 95%+ всех устройств.
 |--------|-------|
 | 💎 **TON** | `UQDw6U27dT4sL0jmK5TW0nNQdjlJaKPO8BDAVnnoUx0ly3RZ` |
 | 🅿️ **ЮMoney** | `4100119497466769` |
-| ☕ **Buy Me a Coffee** | [buyacoffee.ru/codeinlaw](https://buyacoffee.ru/codeinlaw) |
 
 ## 👥 Авторы
 
