@@ -59,12 +59,9 @@ object Socks5Engine {
                     dst = String(raw)
                 }
                 4 -> {
+                    // IPv6: читаем 16 байт адреса и обрабатываем как обычно
                     val raw = inp.readNBytes2(16)
                     dst = InetAddress.getByAddress(raw).hostAddress ?: "::0"
-                    out.write(socks5Reply(0x08))
-                    out.flush()
-                    client.close()
-                    return
                 }
                 else -> {
                     out.write(socks5Reply(0x08))
@@ -144,7 +141,6 @@ object Socks5Engine {
                 try {
                     Log.i(TAG, "DC$dc${if (isMedia) "m" else ""} → WS via $domain ($targetIp)")
 
-                    // WsBridge теперь класс — создаём экземпляр и вызываем connect()
                     val bridge = WsBridge(targetIp, domain, "/apiws")
                     val ws = bridge.connect()
                     ProxyService.wsCount++
@@ -209,14 +205,21 @@ object Socks5Engine {
         t2.join()
     }
 
+    /**
+     * Оптимизация пинга: flush() только когда входной поток пуст.
+     * Это склеивает мелкие порции в один TCP-пакет.
+     */
     private fun pipe(inp: InputStream, out: OutputStream) {
         val buf = ByteArray(65536)
         while (true) {
             val n = inp.read(buf)
             if (n <= 0) break
             out.write(buf, 0, n)
-            out.flush()
+            if (inp.available() == 0) {
+                out.flush()
+            }
         }
+        out.flush()
     }
 
     private fun socks5Reply(status: Int): ByteArray {

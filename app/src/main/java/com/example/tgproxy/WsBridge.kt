@@ -190,9 +190,6 @@ class WsBridge(
     // -------------------------------------------------------------------------
 
     private fun buildClient(): OkHttpClient {
-        // SSLSocketFactory-обёртка, которая вызывает protect() на каждом
-        // новом TCP-сокете ДО установки TLS-рукопожатия.
-        // Именно здесь живёт реальный сокет, который идёт в сеть.
         val protectedSslFactory = if (vpnService != null) {
             ProtectedSslSocketFactory(sslContext.socketFactory, vpnService)
         } else {
@@ -227,14 +224,12 @@ class WsBridge(
         override fun getDefaultCipherSuites(): Array<String> = delegate.defaultCipherSuites
         override fun getSupportedCipherSuites(): Array<String> = delegate.supportedCipherSuites
 
-        // Этот метод OkHttp вызывает для создания нового TCP-сокета перед TLS
         override fun createSocket(
             socket: Socket,
             host: String,
             port: Int,
             autoClose: Boolean
         ): Socket {
-            // protect() на исходном TCP-сокете
             vpn.protect(socket)
             return delegate.createSocket(socket, host, port, autoClose)
         }

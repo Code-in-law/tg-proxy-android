@@ -55,6 +55,18 @@
             android:backgroundTint="#4F46E5"
             android:layout_marginBottom="24dp" />
 
+<!--        &lt;!&ndash; ПУНКТ 4: Добавить прокси в Telegram &ndash;&gt;-->
+<!--        <Button-->
+<!--            android:id="@+id/btnAddToTelegram"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="48dp"-->
+<!--            android:text="В Telegram"-->
+<!--            android:textSize="14sp"-->
+<!--            android:textColor="#FFFFFF"-->
+<!--            android:textStyle="bold"-->
+<!--            android:backgroundTint="#0088CC"-->
+<!--            android:layout_marginBottom="24dp" />-->
+
         <!-- Stats -->
         <TextView
             android:id="@+id/tvStats"
@@ -78,11 +90,62 @@
             android:lineSpacingExtra="4dp"
             android:padding="16dp"
             android:background="@drawable/card_bg"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="24dp" />
 
-        <!-- ═══════ CREDITS SECTION ═══════ -->
+        <!-- ═══════ ДАТА-ЦЕНТРЫ ═══════ -->
 
-        <!-- Header with line -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp"
+            android:paddingStart="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ДАТА-ЦЕНТРЫ"
+                android:textSize="11sp"
+                android:textColor="#4F46E5"
+                android:textStyle="bold"
+                android:letterSpacing="0.15"
+                android:layout_marginEnd="8dp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#4F46E5"
+                android:alpha="0.3" />
+        </LinearLayout>
+
+        <!-- Кнопка добавления DC -->
+        <Button
+            android:id="@+id/btnAddDc"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:text="＋  Добавить адрес DC"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#334155"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Список пользовательских DC -->
+        <TextView
+            android:id="@+id/tvCustomDcs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#94A3B8"
+            android:fontFamily="monospace"
+            android:padding="12dp"
+            android:background="@drawable/card_bg"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone" />
+
+        <!-- ═══════ СОЗДАТЕЛИ ═══════ -->
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -129,7 +192,6 @@
                 android:focusable="true"
                 android:foreground="?android:attr/selectableItemBackground">
 
-                <!-- Avatar -->
                 <TextView
                     android:layout_width="44dp"
                     android:layout_height="44dp"
@@ -139,7 +201,6 @@
                     android:background="@drawable/avatar_app_bg"
                     android:layout_marginEnd="14dp" />
 
-                <!-- Info -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -173,7 +234,6 @@
                         android:layout_marginTop="1dp" />
                 </LinearLayout>
 
-                <!-- Arrow -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -201,7 +261,6 @@
                 android:focusable="true"
                 android:foreground="?android:attr/selectableItemBackground">
 
-                <!-- Avatar -->
                 <TextView
                     android:layout_width="44dp"
                     android:layout_height="44dp"
@@ -211,7 +270,6 @@
                     android:background="@drawable/avatar_proxy_bg"
                     android:layout_marginEnd="14dp" />
 
-                <!-- Info -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -245,7 +303,6 @@
                         android:layout_marginTop="1dp" />
                 </LinearLayout>
 
-                <!-- Arrow -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
