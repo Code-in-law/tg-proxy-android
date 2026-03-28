@@ -140,31 +140,73 @@ object TgConstants {
     // ПУНКТ 3 — Методы для ручного управления DC адресами
     // =========================================================================
 
-    /**
-     * Добавляет пользовательский DC-адрес.
-     *
-     * @param context   — нужен для SharedPreferences (сохранение на диск)
-     * @param ip        — IP-адрес (IPv4 или IPv6)
-     * @param dcId      — номер дата-центра (1-5, 203)
-     * @param isMedia   — это медиа-сервер? (для скачивания файлов)
-     * @param isPrimary — сделать этот IP основным для DC (обновит DC_IPS)
-     *
-     * Пример: addCustomDc(ctx, "149.154.175.55", 1, false, false)
-     * Это добавит IP в IP_TO_DC как не-медиа адрес DC1.
-     */
+
+    enum class AddDcResult {
+        SUCCESS_ADDED,      // Добавлен новый IP для DC
+        SUCCESS_UPDATED,    // IP переназначен с другого DC
+        IP_ALREADY_EXISTS   // IP уже принадлежит этому же DC
+    }
+
     fun addCustomDc(
         context: Context,
         ip: String,
         dcId: Int,
         isMedia: Boolean,
         isPrimary: Boolean
-    ) {
+    ): AddDcResult {
+        // Проверка: существует ли этот IP с другим DC?
+        val existingDcForThisIp = IP_TO_DC[ip]?.first
+        if (existingDcForThisIp != null && existingDcForThisIp != dcId) {
+            // IP принадлежит другому DC - удаляем старую привязку
+            Log.i(TAG, "Moving IP $ip from DC$existingDcForThisIp to DC$dcId")
+
+            // Удаляем старую привязку
+            IP_TO_DC.remove(ip)
+            // Если этот IP был primary для старого DC, нужно очистить или переназначить
+            if (DC_IPS[existingDcForThisIp] == ip) {
+                // Ищем другой IP для этого DC
+                val newPrimary = IP_TO_DC.filter { it.value.first == existingDcForThisIp && it.key != ip }
+                    .keys.firstOrNull()
+                if (newPrimary != null) {
+                    DC_IPS[existingDcForThisIp] = newPrimary
+                } else {
+                    DC_IPS.remove(existingDcForThisIp)
+                }
+            }
+
+            // Добавляем с новым DC
+            IP_TO_DC[ip] = Pair(dcId, isMedia)
+            if (isPrimary) {
+                DC_IPS[dcId] = ip
+            }
+
+            saveCustomDcs(context)
+            return AddDcResult.SUCCESS_UPDATED
+        }
+
+        // Проверка: существует ли уже этот IP с таким же DC?
+        val existingEntry = IP_TO_DC[ip]
+        if (existingEntry != null && existingEntry.first == dcId) {
+            // IP уже принадлежит этому DC - просто обновляем флаги
+            IP_TO_DC[ip] = Pair(dcId, isMedia)
+            if (isPrimary) {
+                DC_IPS[dcId] = ip
+            }
+            saveCustomDcs(context)
+            Log.i(TAG, "Updated flags for existing IP $ip → DC$dcId (media=$isMedia, primary=$isPrimary)")
+            return AddDcResult.IP_ALREADY_EXISTS
+        }
+
+        // Новый IP для этого DC - просто добавляем
         IP_TO_DC[ip] = Pair(dcId, isMedia)
         if (isPrimary) {
             DC_IPS[dcId] = ip
         }
+
         saveCustomDcs(context)
-        Log.i(TAG, "Added custom DC: $ip → DC$dcId (media=$isMedia, primary=$isPrimary)")
+        Log.i(TAG, "Added new custom DC: $ip → DC$dcId (media=$isMedia, primary=$isPrimary)")
+
+        return AddDcResult.SUCCESS_ADDED
     }
 
     /**
@@ -209,23 +251,12 @@ object TgConstants {
         }
     }
 
-    private fun saveCustomDcs(context: Context) {
+    internal fun saveCustomDcs(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         editor.clear()
 
-        // Собираем только пользовательские (не встроенные) адреса
-        val builtinIps = setOf(
-            "149.154.175.50", "149.154.175.51", "149.154.175.53", "149.154.175.54",
-            "149.154.175.52", "149.154.167.41", "149.154.167.50", "149.154.167.51",
-            "149.154.167.220", "95.161.76.100", "149.154.167.151", "149.154.167.222",
-            "149.154.167.223", "149.154.162.123", "149.154.175.100", "149.154.175.101",
-            "149.154.175.102", "149.154.167.91", "149.154.167.92", "149.154.164.250",
-            "149.154.166.120", "149.154.166.121", "149.154.167.118", "149.154.165.111",
-            "91.108.56.100", "91.108.56.101", "91.108.56.116", "91.108.56.126",
-            "149.154.171.5", "91.108.56.102", "91.108.56.128", "91.108.56.151",
-            "91.105.192.100"
-        )
+        val builtinIps = getBuiltinIps() // Вынесите builtinIps в отдельный метод
 
         val customEntries = IP_TO_DC.filter { it.key !in builtinIps }
         editor.putInt("count", customEntries.size)
@@ -239,6 +270,19 @@ object TgConstants {
         }
         editor.apply()
     }
+
+    // Добавьте вспомогательный метод
+    private fun getBuiltinIps(): Set<String> = setOf(
+        "149.154.175.50", "149.154.175.51", "149.154.175.53", "149.154.175.54",
+        "149.154.175.52", "149.154.167.41", "149.154.167.50", "149.154.167.51",
+        "149.154.167.220", "95.161.76.100", "149.154.167.151", "149.154.167.222",
+        "149.154.167.223", "149.154.162.123", "149.154.175.100", "149.154.175.101",
+        "149.154.175.102", "149.154.167.91", "149.154.167.92", "149.154.164.250",
+        "149.154.166.120", "149.154.166.121", "149.154.167.118", "149.154.165.111",
+        "91.108.56.100", "91.108.56.101", "91.108.56.116", "91.108.56.126",
+        "149.154.171.5", "91.108.56.102", "91.108.56.128", "91.108.56.151",
+        "91.105.192.100"
+    )
 
     // =========================================================================
     // Вспомогательные функции

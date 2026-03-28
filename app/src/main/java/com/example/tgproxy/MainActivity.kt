@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import android.util.Log
 
 class MainActivity : AppCompatActivity() {
 
@@ -69,6 +70,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
+
         btnToggle.setOnClickListener { toggleProxy() }
 
 
@@ -89,9 +92,7 @@ class MainActivity : AppCompatActivity() {
             appendLine("📋 Как пользоваться:")
             appendLine("")
             appendLine("1. Нажмите «▶ Запустить прокси»")
-            appendLine("2. Нажмите «📲 Добавить в Telegram»")
-            appendLine("   или вручную:")
-            appendLine("   Telegram → Настройки →")
+            appendLine("2. Telegram → Настройки →")
             appendLine("   Данные и память → Прокси")
             appendLine("   Сервер: 127.0.0.1 · Порт: 1080")
             appendLine("3. Нажмите Подключить ✓")
@@ -104,9 +105,18 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Flowseal")))
         }
 
+        // Проверка обновлений
+        VersionChecker.checkForUpdates(this) { updateFound ->
+            if (updateFound) {
+                Log.d("MainActivity", "Найдено обновление")
+            }
+        }
+
         handler.post(statsUpdater)
         updateCustomDcsList()
     }
+
+
 
     override fun onDestroy() {
         handler.removeCallbacks(statsUpdater)
@@ -114,12 +124,12 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
     // =========================================================================
     // ПУНКТ 3 — Диалог добавления пользовательского DC
     // =========================================================================
 
     private fun showAddDcDialog() {
-        // Создаём layout программно (можно вынести в XML, но для простоты — так)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 16)
@@ -132,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(etIp)
 
         val etDc = EditText(this).apply {
-            hint = "Номер DC (1-5 или 203)"
+            hint = "Номер DC (1-999)"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
         layout.addView(etDc)
@@ -156,19 +166,20 @@ class MainActivity : AppCompatActivity() {
                 val isMedia = cbMedia.isChecked
                 val isPrimary = cbPrimary.isChecked
 
-                // Валидация
+                // Валидация IP
                 if (ip.isEmpty()) {
                     Toast.makeText(this, "Введите IP-адрес", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
+                // Валидация номера DC
                 val dcId = dcStr.toIntOrNull()
-                if (dcId == null || (dcId !in 1..5 && dcId != 203)) {
-                    Toast.makeText(this, "DC должен быть 1-5 или 203", Toast.LENGTH_SHORT).show()
+                if (dcId == null || dcId !in 1..999) {
+                    Toast.makeText(this, "DC должен быть от 1 до 999", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
-                // Проверяем, что IP валидный
+                // Проверка валидности IP
                 try {
                     java.net.InetAddress.getByName(ip)
                 } catch (e: Exception) {
@@ -176,12 +187,65 @@ class MainActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
 
-                TgConstants.addCustomDc(this, ip, dcId, isMedia, isPrimary)
-                Toast.makeText(this, "DC$dcId: $ip добавлен", Toast.LENGTH_SHORT).show()
-                updateCustomDcsList()
+                // Проверяем, не занят ли IP другим DC
+                val existingDcForIp = TgConstants.IP_TO_DC[ip]?.first
+                if (existingDcForIp != null && existingDcForIp != dcId) {
+                    // IP принадлежит другому DC - спрашиваем подтверждение
+                    AlertDialog.Builder(this)
+                        .setTitle("Переместить IP")
+                        .setMessage("IP $ip уже принадлежит DC$existingDcForIp\n\nПереместить на DC$dcId?")
+                        .setPositiveButton("Переместить") { _, _ ->
+                            val result = TgConstants.addCustomDc(this, ip, dcId, isMedia, isPrimary)
+                            handleAddResult(result, ip, dcId, existingDcForIp)
+                        }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setPositiveButton
+                }
+
+                // Проверяем, не пытаемся ли мы добавить тот же IP к тому же DC
+                val existingEntry = TgConstants.IP_TO_DC[ip]
+                if (existingEntry != null && existingEntry.first == dcId) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Обновить настройки")
+                        .setMessage("IP $ip уже принадлежит DC$dcId\n\nОбновить параметры (media/primary)?")
+                        .setPositiveButton("Обновить") { _, _ ->
+                            val result = TgConstants.addCustomDc(this, ip, dcId, isMedia, isPrimary)
+                            handleAddResult(result, ip, dcId, null)
+                        }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setPositiveButton
+                }
+
+                // Новый IP для DC
+                val result = TgConstants.addCustomDc(this, ip, dcId, isMedia, isPrimary)
+                handleAddResult(result, ip, dcId, null)
             }
             .setNegativeButton("Отмена", null)
             .show()
+    }
+
+    private fun handleAddResult(result: TgConstants.AddDcResult, ip: String, dcId: Int, oldDcId: Int?) {
+        when (result) {
+            TgConstants.AddDcResult.SUCCESS_ADDED -> {
+                Toast.makeText(this, "✅ Добавлен DC$dcId: $ip", Toast.LENGTH_SHORT).show()
+                updateCustomDcsList()
+            }
+            TgConstants.AddDcResult.SUCCESS_UPDATED -> {
+                Toast.makeText(this, "🔄 IP $ip перемещен с DC$oldDcId на DC$dcId", Toast.LENGTH_SHORT).show()
+                updateCustomDcsList()
+            }
+            TgConstants.AddDcResult.IP_ALREADY_EXISTS -> {
+                Toast.makeText(this, "📝 Обновлены параметры для $ip (DC$dcId)", Toast.LENGTH_SHORT).show()
+                updateCustomDcsList()
+            }
+
+            else -> {
+                Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
+                updateCustomDcsList()
+            }
+            }
     }
 
     /**
@@ -196,19 +260,25 @@ class MainActivity : AppCompatActivity() {
         }
         tvCustomDcs.visibility = View.VISIBLE
         tvCustomDcs.text = buildString {
-            appendLine("📡 Пользовательские DC:")
-            for (e in entries) {
-                val flags = buildString {
-                    if (e.isMedia) append("media ")
-                    if (e.isPrimary) append("⭐primary")
+            appendLine("Пользовательские DC:\n")
+
+            // Группируем по DC для лучшего отображения
+            val grouped = entries.groupBy { it.dcId }
+            for ((dcId, ips) in grouped) {
+                appendLine("  DC$dcId:")
+                for (entry in ips) {
+                    val flags = buildString {
+                        if (entry.isMedia) append(" media")
+                        if (entry.isPrimary) append(" ⭐")
+                        if (isEmpty()) append("")
+                    }
+                    appendLine("    • ${entry.ip}$flags")
                 }
-                appendLine("  DC${e.dcId}: ${e.ip} $flags")
             }
             appendLine("")
             appendLine("(Долгое нажатие для удаления)")
         }
 
-        // Долгое нажатие — показываем диалог удаления
         tvCustomDcs.setOnLongClickListener {
             showRemoveDcDialog(entries)
             true
