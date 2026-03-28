@@ -141,7 +141,7 @@ object Socks5Engine {
                 try {
                     Log.i(TAG, "DC$dc${if (isMedia) "m" else ""} → WS via $domain ($targetIp)")
 
-                    val bridge = WsBridge(targetIp, domain, "/apiws")
+                    val bridge = WsBridge(targetIp, domain, "/")
                     val ws = bridge.connect()
                     ProxyService.wsCount++
 

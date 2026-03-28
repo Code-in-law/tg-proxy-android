@@ -14,14 +14,6 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.*
 
-/**
- * WebSocket bridge using OkHttp.
- * Class (not object) — каждое соединение имеет свой экземпляр.
- *
- * Два режима:
- *  - VPN-режим:    передать onData + vpnService → protect() на SSL-сокете
- *  - SOCKS5-режим: onData = null, vpnService = null → recvQueue
- */
 class WsBridge(
     private val targetIp: String,
     private val domain: String,
@@ -58,6 +50,7 @@ class WsBridge(
 
         val request = Request.Builder()
             .url(url)
+            .header("Host", domain)
             .header("Origin", "https://web.telegram.org")
             .header("Sec-WebSocket-Protocol", "binary")
             .header("User-Agent",
@@ -204,9 +197,15 @@ class WsBridge(
             .writeTimeout(10, TimeUnit.SECONDS)
             .pingInterval(30, TimeUnit.SECONDS)
             .dns(object : Dns {
-                override fun lookup(hostname: String): List<InetAddress> =
-                    if (hostname == domain) listOf(InetAddress.getByName(targetIp))
-                    else Dns.SYSTEM.lookup(hostname)
+                override fun lookup(hostname: String): List<InetAddress> {
+                    val result = if (hostname == domain) {
+                        listOf(InetAddress.getByName(targetIp))
+                    } else {
+                        Dns.SYSTEM.lookup(hostname)
+                    }
+                    Log.d(TAG, "DNS lookup for $hostname -> ${result.joinToString()}")
+                    return result
+                }
             })
             .build()
     }
@@ -284,6 +283,10 @@ class WsBridge(
 
         fun send(data: ByteArray) {
             if (closed) throw IOException("WebSocket closed")
+            Log.d(TAG, "Sending to WS $domain, size=${data.size}")
+            if (data.size > 16384) {
+                Log.w(TAG, "Large packet: ${data.size} bytes, may need fragmentation")
+            }
             ws.send(data.toByteString(0, data.size))
         }
 
